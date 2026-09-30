@@ -16,7 +16,7 @@ const app = express();
 app.use(cors({ origin: cfg.frontend, credentials: true }), express.json({ limit: "5mb" }), cookieParser());
 
 const board = new ExpressAdapter(); board.setBasePath("/admin/queues");
-createBullBoard({ queues: [new BullMQAdapter(queue)], serverAdapter: board });
+createBullBoard({ queues: [new BullMQAdapter(queue) as any], serverAdapter: board });
 app.use("/admin/queues", board.getRouter());
 
 const google = new OAuth2Client(cfg.google.id, cfg.google.secret, `${cfg.backend}/auth/google/callback`);
