@@ -34,7 +34,10 @@ app.get("/auth/google/callback", async (req, res) => {
       ON CONFLICT(id) DO UPDATE SET email=$2,name=$3,avatar=$4`, [p.sub, p.email, p.name, p.picture]);
     res.cookie("token", jwt.sign({ uid: p.sub }, cfg.jwt, { expiresIn: "7d" }), { httpOnly: true, sameSite: "lax" });
     res.redirect(`${cfg.frontend}/`);
-  } catch (e) { res.redirect(`${cfg.frontend}/?error=login_failed`); }
+  } catch (e) {
+  console.error("GOOGLE LOGIN ERROR:", e);
+  res.redirect(`${cfg.frontend}/?error=login_failed`);
+}
 });
 app.post("/auth/logout", (_q, res) => { res.clearCookie("token"); res.json({ ok: true }); });
 app.get("/api/me", auth, async (req: any, res) => {
