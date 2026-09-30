@@ -8,6 +8,7 @@ export const api = {
   me: () => req<User>("/api/me"),
   logout: () => req("/auth/logout", { method: "POST" }),
   emails: (status: "scheduled" | "sent") => req<EmailRow[]>(`/api/emails?status=${status}`),
+  search: (q: string) => req<EmailRow[]>(`/api/search?q=${encodeURIComponent(q)}`),
   schedule: (b: ScheduleInput) => req<{ scheduled: number }>("/api/schedule", { method: "POST", body: JSON.stringify(b) }),
   disconnectSlack: () => req("/api/slack/disconnect", { method: "POST" }),
 };

@@ -1,49 +1,53 @@
+import { Menu } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import type { EmailRow, User } from "./types";
-import { Button, Toast } from "./components/ui";
-import EmailTable from "./components/EmailTable";
-import ComposeModal from "./components/ComposeModal";
+import { Logo, Toast } from "./components/ui";
+import Login from "./components/Login";
+import Sidebar from "./components/Sidebar";
+import Inbox from "./components/Inbox";
+import Compose from "./components/Compose";
+import EmailDetail from "./components/EmailDetail";
 
+type Tab = "scheduled" | "sent";
 export default function App() {
   const [user, setUser] = useState<User | null>(null), [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState<"scheduled" | "sent">("scheduled");
-  const [rows, setRows] = useState<EmailRow[]>([]), [loading, setLoading] = useState(false);
-  const [compose, setCompose] = useState(false), [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
+  const [tab, setTab] = useState<Tab>("scheduled"), [view, setView] = useState<"list" | "compose" | "detail">("list"), [open, setOpen] = useState<EmailRow | null>(null);
+  const [data, setData] = useState<Record<Tab, EmailRow[]>>({ scheduled: [], sent: [] }), [loading, setLoading] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const say = (msg: string, error = false) => { setToast({ msg, error }); setTimeout(() => setToast(null), 3500); };
 
   useEffect(() => { api.me().then(setUser).catch(() => setUser(null)).finally(() => setChecking(false)); }, []);
   const load = useCallback(async () => {
     setLoading(true);
-    try { setRows(await api.emails(tab)); } catch (e) { say((e as Error).message, true); } finally { setLoading(false); }
-  }, [tab]);
+    try { const [scheduled, sent] = await Promise.all([api.emails("scheduled"), api.emails("sent")]); setData({ scheduled, sent }); }
+    catch (e) { say((e as Error).message, true); } finally { setLoading(false); }
+  }, []);
   useEffect(() => { if (user) { load(); const t = setInterval(load, 10000); return () => clearInterval(t); } }, [user, load]);
 
-  if (checking) return <p className="p-8">Loading…</p>;
-  if (!user) return (
-    <main className="flex h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-2xl font-semibold">Email Scheduler</h1>
-      <a href="/auth/google"><Button>Sign in with Google</Button></a></main>);
+  if (checking) return <p className="p-8 text-sm">Loading…</p>;
+  const toastEl = toast && <Toast {...toast} />;
+  if (!user) return <><Login onError={m => say(m, true)} />{toastEl}</>;
 
   return (
-    <div className="mx-auto max-w-5xl p-4">
-      <header className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src={user.avatar} alt="" className="h-10 w-10 rounded-full" referrerPolicy="no-referrer" />
-          <div><p className="font-medium">{user.name}</p><p className="text-sm text-slate-500">{user.email}</p></div></div>
-        <div className="flex gap-2">
-          {user.slack_connected
-            ? <Button variant="ghost" onClick={async () => { await api.disconnectSlack(); setUser({ ...user, slack_connected: false }); }}>Disconnect Slack</Button>
-            : <a href="/auth/slack"><Button variant="ghost">Connect Slack</Button></a>}
-          <Button variant="ghost" onClick={async () => { await api.logout(); setUser(null); }}>Log out</Button></div>
-      </header>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex gap-1 rounded-lg bg-slate-200 p-1">
-          {(["scheduled", "sent"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} className={`rounded-md px-4 py-1.5 text-sm ${tab === t ? "bg-white shadow" : ""}`}>{t === "scheduled" ? "Scheduled emails" : "Sent emails"}</button>))}</div>
-        <Button onClick={() => setCompose(true)}>Compose new email</Button></div>
-      <EmailTable rows={rows} loading={loading && !rows.length} mode={tab} />
-      {compose && <ComposeModal onClose={() => setCompose(false)} onError={m => say(m, true)} onDone={() => { setCompose(false); say("Emails scheduled"); load(); }} />}
-      {toast && <Toast {...toast} />}
+    <div className="flex h-screen">
+      {navOpen && <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} />}
+      <Sidebar navOpen={navOpen} user={user} tab={tab} counts={{ scheduled: data.scheduled.length, sent: data.sent.length }}
+        onTab={t => { setTab(t); setView("list"); setNavOpen(false); }} onCompose={() => { setView("compose"); setNavOpen(false); }}
+        onLogout={async () => { await api.logout(); setUser(null); }}
+        onDisconnectSlack={async () => { await api.disconnectSlack(); setUser({ ...user, slack_connected: false }); say("Slack disconnected"); }} />
+      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-12 items-center gap-3 border-b border-slate-100 px-3 md:hidden">
+        <button aria-label="Open menu" onClick={() => setNavOpen(true)}><Menu size={22} /></button><Logo />
+      </div>
+      <main className="flex min-w-0 flex-1 overflow-auto">
+        {view === "compose" ? <Compose user={user} onBack={() => setView("list")} onError={m => say(m, true)} onInfo={say}
+            onDone={() => { say("Emails scheduled"); setTab("scheduled"); setView("list"); load(); }} />
+          : view === "detail" && open ? <EmailDetail row={open} user={user} onBack={() => setView("list")} onInfo={say} />
+          : <Inbox tab={tab} rows={data[tab]} loading={loading} onRefresh={load} onOpen={r => { setOpen(r); setView("detail"); }} />}
+      </main>
+      </div>
+      {toastEl}
     </div>);
 }
