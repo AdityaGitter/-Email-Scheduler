@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://email-scheduler-api-c763.onrender.com/api/:path*" },
+    { "source": "/auth/:path*", "destination": "https://email-scheduler-api-c763.onrender.com/auth/:path*" }
+  ]
+}

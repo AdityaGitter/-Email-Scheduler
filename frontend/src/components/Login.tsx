@@ -8,7 +8,7 @@ export default function Login({ onError }: { onError: (m: string) => void }) {
       <div className="w-full max-w-[354px] rounded-xl border border-slate-200 p-10">
         <div className="mb-5 flex justify-center"><Logo /></div>
         <h1 className="mb-6 text-center text-3xl font-semibold">Login</h1>
-        <a href="/auth/google" className="flex h-10 items-center justify-center gap-2 rounded-lg bg-mint text-sm hover:brightness-95"><G /> Login with Google</a>
+        <a href={`${import.meta.env.VITE_API_URL}/auth/google`} className="flex h-10 items-center justify-center gap-2 rounded-lg bg-mint text-sm hover:brightness-95"><G /> Login with Google</a>
         <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" />or sign up through email<span className="h-px flex-1 bg-slate-200" /></div>
         <form onSubmit={e => { e.preventDefault(); onError("Email login isn't available yet. Use Login with Google."); }} className="space-y-3">
           <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email ID" aria-label="Email ID" className="h-10 w-full rounded-lg bg-field px-3 text-sm outline-none focus:ring-2 focus:ring-brand/40" />
