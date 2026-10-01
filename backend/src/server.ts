@@ -32,8 +32,12 @@ app.get("/auth/google/callback", async (req, res) => {
     const p = (await google.verifyIdToken({ idToken: tokens.id_token!, audience: cfg.google.id })).getPayload()!;
     await pool.query(`INSERT INTO users(id,email,name,avatar) VALUES($1,$2,$3,$4)
       ON CONFLICT(id) DO UPDATE SET email=$2,name=$3,avatar=$4`, [p.sub, p.email, p.name, p.picture]);
-    res.cookie("token", jwt.sign({ uid: p.sub }, cfg.jwt, { expiresIn: "7d" }), { httpOnly: true, sameSite: "lax" });
-    res.redirect(`${cfg.frontend}/`);
+    res.cookie("token", jwt.sign({ uid: p.sub }, cfg.jwt, { expiresIn: "7d" }), {
+  httpOnly: true,
+  sameSite: "none",
+  secure: true,
+  maxAge: 7 * 24 * 60 * 60 * 1000
+});
   } catch (e) {
   console.error("GOOGLE LOGIN ERROR:", e);
   res.redirect(`${cfg.frontend}/?error=login_failed`);
