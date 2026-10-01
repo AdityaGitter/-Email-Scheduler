@@ -28,20 +28,42 @@ const auth = (req: Request & { uid?: string }, res: Response, next: NextFunction
 app.get("/auth/google", (_q, res) => res.redirect(google.generateAuthUrl({ scope: ["openid", "email", "profile"] })));
 app.get("/auth/google/callback", async (req, res) => {
   try {
+    console.log("GOOGLE CALLBACK: started");
+
     const { tokens } = await google.getToken(String(req.query.code));
-    const p = (await google.verifyIdToken({ idToken: tokens.id_token!, audience: cfg.google.id })).getPayload()!;
-    await pool.query(`INSERT INTO users(id,email,name,avatar) VALUES($1,$2,$3,$4)
-      ON CONFLICT(id) DO UPDATE SET email=$2,name=$3,avatar=$4`, [p.sub, p.email, p.name, p.picture]);
-    res.cookie("token", jwt.sign({ uid: p.sub }, cfg.jwt, { expiresIn: "7d" }), {
-  httpOnly: true,
-  sameSite: "none",
-  secure: true,
-  maxAge: 7 * 24 * 60 * 60 * 1000
-});
+    console.log("GOOGLE CALLBACK: token received");
+
+    const p = (await google.verifyIdToken({
+      idToken: tokens.id_token!,
+      audience: cfg.google.id
+    })).getPayload()!;
+    console.log("GOOGLE CALLBACK: token verified");
+
+    await pool.query(
+      `INSERT INTO users(id,email,name,avatar) VALUES($1,$2,$3,$4)
+       ON CONFLICT(id) DO UPDATE SET email=$2,name=$3,avatar=$4`,
+      [p.sub, p.email, p.name, p.picture]
+    );
+    console.log("GOOGLE CALLBACK: database updated");
+
+    res.cookie(
+      "token",
+      jwt.sign({ uid: p.sub }, cfg.jwt, { expiresIn: "7d" }),
+      {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      }
+    );
+
+    console.log("GOOGLE CALLBACK: cookie set");
+
+    res.redirect(`${cfg.frontend}/`);
   } catch (e) {
-  console.error("GOOGLE LOGIN ERROR:", e);
-  res.redirect(`${cfg.frontend}/?error=login_failed`);
-}
+    console.error("GOOGLE LOGIN ERROR:", e);
+    res.redirect(`${cfg.frontend}/?error=login_failed`);
+  }
 });
 app.post("/auth/logout", (_q, res) => { res.clearCookie("token"); res.json({ ok: true }); });
 app.get("/api/me", auth, async (req: any, res) => {
